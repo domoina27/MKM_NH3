@@ -1,5 +1,5 @@
-# MKM_NH3
-## THIS IS A PRACTICE FOR MKM OF NH<sub>3</sub> DISSOCIATION AND N<sub>2</sub> AND H<sub>2</sub> FROMATION:
+## THIS IS A PRACTICE FOR MKM OF NH<sub>3</sub> DISSOCIATION AND N<sub>2</sub> AND H<sub>2</sub> FROMATION
+---
 ### Reactions:
 #### Ammonia adsorption and desorption step:
 * NH<sub>3</sub> (g) + * = NH<sub>3</sub>*

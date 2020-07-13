@@ -15,7 +15,6 @@ THIS IS A PRACTICE FOR MICRO-KINETIC MODELING OF NH3 DISSOCIATION AND N2 AND H2 
         2H* = H2 (g) + 2*
            PLOT COVERAGE VS TIME
 """
-
 import sys
 import time
 import multiprocessing as mp
@@ -31,7 +30,9 @@ from rate_constant_func import calc_k_arr as k_surf
 from rate_constant_func import dksur_dT
 from rate_constant_func import dkdes_dT
 
-# 0/ Constants
+# =============================================================================
+# # 0/ Constants
+# =============================================================================
 
     # mass of relevant reactants
 m_NH3 = 17.03 * 1.66054e-27
@@ -44,14 +45,16 @@ pt = 0e-20 # Total pressure
 T0 = 50 # Initial Temperature
 
 t_end = 400 # Time end
-th_NH3_0 = 3/9
+th_NH3_0 = 1/9
 theta = 1-th_NH3_0
 
 # Initial value
 P = pt * 1e5
 y0 = [P,th_NH3_0 , 0 , 0 , 0 , 0 , 0 , 0 , theta , 0 , 0 , T0]
 
-# 1/ Define function
+# =============================================================================
+# # 1/ Define function
+# =============================================================================
 
 def dydt(t,y):
     
@@ -136,7 +139,9 @@ def dydt(t,y):
     
     return dydt
 
+# =============================================================================
 # 2/ Solve the differntial equation
+# =============================================================================
 
         #define the Jacobian matrix
 
@@ -245,18 +250,7 @@ def JACOB(t,x):
     df10_dx8 = dr2_dx8 + 0.5*dr4_dx8
     df10_dx11= dr2_dx11+ 0.5*dr4_dx11
     
-    #            5             6      8
-    #r6 = kf6 * Th_NN - kb6 * Th_N2 * Th
-    #dr6_dx5 = kf6
-    #dr6_dx6 = - kb6 * Th
-    #dr6_dx8 = - kb6 * Th_N2
-    #dr6_dx11 = ########
-    
-    #r7 = r5
-    
-    
-    #r8 = 0.5*(2*r2 + r4)
-    
+        
     # Derivatives dfi/dxi
     
     #      0       1       2         3      4        5          6       7         8       9       10   11
@@ -278,14 +272,18 @@ def JACOB(t,x):
     Jacobian = np.array([J0, J1, J2, J3, J4, J5, J6, J7, J8, J9, J10, J11])
     return Jacobian
 
+    #Solving the ODE
 
-r = solve_ivp(dydt, (0,t_end), y0, method="LSODA", t_eval=np.linspace(0,t_end,1000), jac=JACOB, rtol = 1e-10, atol=1e-14)
+%time r0 = solve_ivp(dydt, (0,t_end), y0, method="BDF", t_eval=np.linspace(0,t_end,1000))
+%time r = solve_ivp(dydt, (0,t_end), y0, method="BDF", t_eval=np.linspace(0,t_end,1000), jac=JACOB, rtol = 1e-7, atol=1e-10)
 P_NH3, Th_NH3, Th_NH2, Th_NH, Th_N, Th_NN, Th_N2, Th_H, Th, P_N2, P_H2, T = r.y 
 #  0     1       2     3      4      5      6       7   8    9     10   11
 t = r.t
 
 
+# =============================================================================
 # 3/ Plot result
+# =============================================================================
 
     # Coverage
 # plt.plot(T,Th_NH3, label= "Theta NH3")
@@ -305,15 +303,17 @@ t = r.t
 # plt.plot(T,P_H2, label= "P H2")
 # plt.show()
 
-# 4/ Caculate Rate
+# =============================================================================
+#  4/ Caculate Rate
+# =============================================================================
 k_ads_1 = k_ads(T, P_NH3, 1e-20, m_NH3)/Beta           # adsorption of NH3
 k_des_1 = k_des(T, 1e-20, m_NH3, 1, 8.92, 140e3)/Beta
 
 k_f_2 = k_surf(T, 1e13, 110e3)/Beta # dissociation of NH3
 k_b_2 = k_surf(T, 1e13,  115e3)/Beta
 
-k_f_3 = k_surf(T, 1e13, 35e3)/Beta
-k_b_3 = k_surf(T, 1e13, 67e3)/Beta    # dissociation of NH2
+# k_f_3 = k_surf(T, 1e13, 35e3)/Beta
+# k_b_3 = k_surf(T, 1e13, 67e3)/Beta    # dissociation of NH2
 
 k_f_4 = k_surf(T, 1e13, 118e3)/Beta
 k_b_4 = k_surf(T, 1e13,  92e3)/Beta   # dissociation of NH
@@ -325,13 +325,6 @@ k_b_5 = k_surf(T, 1e13,  104e3)/Beta   # N-N coupling
 k_f_6 = k_surf(T, 1e13, 23e3)/Beta
 k_b_6 = k_surf(T, 1e13, 74e3)/Beta    # N2* formation
 
-k_des_7 = k_des(T, 1e-20, m_N2, 2, 2.88, 40e3)/Beta  # N2 desorption and adsorption
-k_ads_7 = k_ads(T, P_N2, 1e-20, m_N2)/Beta            # N2 adsorption and adsorption
-
-    # formation of H2
-k_des_8 = k_des(T, 1e-20, m_H2, 2, 87.6, 20e3)/Beta   # H2 desorption and adsorption
-k_ads_8 = k_ads(T, P_H2, 1e-20, m_H2)/Beta          # H2 adsorption and adsorption
-
         # rate calc
 rf1 = k_ads_1 * Th
 rb1 = k_des_1 * Th_NH3 ; r1 = rb1 #-rf1 #NH3 Ads and Des
@@ -339,8 +332,6 @@ rb1 = k_des_1 * Th_NH3 ; r1 = rb1 #-rf1 #NH3 Ads and Des
 rf2 = k_f_2 * Th_NH3 * Th 
 rb2 = k_b_2 * Th_NH2 * Th_H ; r2 = rf2-rb2 # NH3* rate
 
-rf3 = k_f_3 * Th_NH2 *Th
-rb3 = k_b_3 * Th_NH * Th_H ; r3 = rf3-rb3 # NH2* rate
 
 rf4 = k_f_4 * Th_NH * Th
 rb4 = k_b_4 * Th_N * Th_H ; r4 = rf4-rb4 # NH* rate
@@ -351,57 +342,19 @@ rb5 = k_b_5 * Th_NN  ; r5 = rf5-rb5 # N* rate
 rf6 = k_f_6 * Th_NN 
 rb6 = k_b_6 * Th_N2 *Th ; r6 = rf6-rb6 # N-N* rate
 
-rf7 = k_des_7 * Th_N2
-rb7 = k_ads_7 * Th  ; r7 = r5 #+rb7  #rf7-rb7 # N2 Ads and Des
+r7 = r5 #+rb7  #rf7-rb7 # N2 Ads and Des
+r8 = 0.5*(2*r2+r4)   # + rb8#rf8-rb8 # H2 Ads and Des
 
-rf8 = k_des_8 * Th_H**2 
-rb8 = k_ads_8 * Th**2  ; r8 = 0.5*(2*r2+r4)   # + rb8#rf8-rb8 # H2 Ads and Des
+# =============================================================================
+# 5/ Plot TPD
+# =============================================================================
+plt.plot(T,r1, label= "NH3", color ="b")
+plt.plot(T,r7, label= "N2", color ="g")
+plt.plot(T,r8, label= "H2", color ="r", ls ="--")
 
-# dydt[2] = r2 - r3   # Th_NH2
-# dydt[3] = r3 - r4   # Th_NH
-# dydt[4] = r4 - 2*r5 # Th_N
-# dydt[5] = r5 - r6   # Th_N-N
-# dydt[6] = r6 - r7   # Th_N2
-# dydt[7] = r2 + r3 + r4 - 2*r8 # Th_H
-# dydt[8] = r6 + r7 + 2*r8 - r1 - r2 - r3 -r4 # theta
-
-# 5/ Plot rate Vs Temperature
-
-# plt.plot(T,-r1, label= "NH3")
-# plt.plot(T,-r1+r2, label= "NH3*")
-# plt.plot(T,r2-r3, label= "NH2*")
-# plt.plot(T,r3 - r4, label= "NH*")
-# plt.plot(T,r4 - 2*r5, label= "N*")
-# plt.plot(T,r5 - r6, label= "*NN*")
-# plt.plot(T,r2 + r3 + r4 - 2*r8, label= "H*")
-# plt.plot(T,r6 + r7 + 2*r8 - r1 - r2 - r3 -r4, label= "*")
-
-# plt.plot(T,r8, label= th_NH3_0)
-# plt.plot(T,r8, label= "H2")
-
-# plt.plot(T,rf8, label= "Th**2")
-
-# #------------------------------------
-fig = plt.figure()
-
-ax1 = fig.add_subplot(111)
-ax1.plot(T, (r1), "b", ls = "-", label= "NH3")
-ax1.set_ylabel('NH3')
-
-ax2 = ax1.twinx()
-ax2.plot(T, (r7), "g", ls = "-", label= "N2")
-ax2.set_ylabel('N2', color='g')
-
-ax3 = ax1.twinx()
-ax3.plot(T, (r8), "r", ls = "-", label= "H2")
-ax3.set_ylabel('H2', color='g')
-
-# for tl in ax2.get_yticklabels():
-#     tl.set_color('g')
-
-# plt.ylabel('Rate of reaction')
+plt.title("TPD at "+ str(round(th_NH3_0,2))+" coverage", fontsize=15)
 plt.xlabel("Temperature (K)")
-plt.title("solver_ivp")
-plt.xlim(50,1000)
-ax3.legend(loc="upper right")
+plt.ylabel("Rate")
+plt.legend()
+plt.xlim(200,1000)
 plt.show()

@@ -335,6 +335,10 @@ r7 = r5 #+rb7  #rf7-rb7 # N2 Ads and Des
 r8 = 0.5*(2*r2+r4)   # + rb8#rf8-rb8 # H2 Ads and Des
 
 # 5/ Plot rate Vs Temperature
+plt.plot(T,r1, label= "NH3", color ="b")
+plt.plot(T,r7, label= "N2", color ="g")
+plt.plot(T,r8, label= "H2", color ="r", ls= "--")
+
 plt.ylabel('Rate of reaction')
 plt.xlabel("Temperature (K)")
 plt.title("TPD at 0.11 NH3* coverage")

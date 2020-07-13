@@ -1,4 +1,4 @@
-## THIS IS A PRACTICE FOR MKM OF NH<sub>3</sub> DISSOCIATION AND N<sub>2</sub> AND H<sub>2</sub> FROMATION
+### MICROKINETIC MODEL OF NH<sub>3</sub> DISSOCIATION AND N<sub>2</sub> AND H<sub>2</sub> FROMATION
 ---
 ### Reactions:
 #### Ammonia adsorption and desorption step:

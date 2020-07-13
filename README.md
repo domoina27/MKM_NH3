@@ -18,11 +18,9 @@
 * 2 H* = H<sub>2</sub> (gas) + 2*
 
 ### Initial conditions
-In this model, the initial temperature T<sub>0</sub> start at 50K, and a heating rate $\beta$	 = 3 K/s. 
+In this model, the initial temperature T<sub>0</sub> start at 50K, and a heating rate Beta	 = 3 K/s. 
 
-To simplify our current model, steady-state approximation of the following adsorbed species was used: NH<sub>2</sub><sub>ads</sub>, N-N<sub>ads</sub>, N<sub>2</sub><sub>ads</sub>, and H<sub>ads</sub>, which means:
-
-$$\frac{\partial \theta_{NH2}}{\partial t} = 0 ; \frac{\partial \theta_{N-N}}{\partial t} = 0;  \frac{\partial \theta_{N2}}{\partial t} = 0 ; \frac{\partial \theta_{H}}{\partial t} = 0$$
+To simplify our current model, steady-state approximation of the following adsorbed species was used: NH<sub>2</sub><sub>ads</sub>, N-N<sub>ads</sub>, N<sub>2</sub><sub>ads</sub>, and H<sub>ads</sub>
 
 ### Solve the ODE
 Because our model is stiff, the ODEs cannot be solved using an explicit method. Consequently, **BDF method** (Backward-Differentiation Formulas) was used instead of Runge Kutta. The former however requires a **Jacobian matrix** of the right-hand side of the system with respect to y. 

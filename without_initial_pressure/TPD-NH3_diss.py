@@ -51,12 +51,14 @@ theta = 1-th_NH3_0
 # Initial value
 P = pt * 1e5
 y0 = [P,th_NH3_0 , 0 , 0 , 0 , 0 , 0 , 0 , theta , 0 , 0 , T0]
+arguments = (140787, 110285, 115109, 118872, 92242, 165379, 104495)     #Co2Ni
 
 # =============================================================================
 # # 1/ Define function
 # =============================================================================
 
-def dydt(t,y):
+
+def dydt(t,y,   E1, Ef2, Eb2, Ef4, Eb4, Ef5, Eb5):
     
     dydt = np.zeros(12)
     
@@ -65,64 +67,38 @@ def dydt(t,y):
         
     # calculate all reaction rate constants        
         #Dissociation of NH3
-    k_ads_1 = k_ads(T, P_NH3, 1e-20, m_NH3)/Beta
-    k_des_1 = k_des(T, 1e-20, m_NH3, 1, 8.92, 140e3)/Beta #adsorption and desorption of NH3
+    k_des_1 = k_des(T, 1e-20, m_NH3, 1, 8.92, E1)/Beta #adsorption and desorption of NH3
            
+    k_f_2 = k_surf(T, 1e13, Ef2)/Beta
+    k_b_2 = k_surf(T, 1e13, Eb2 )/Beta  # dissociation of NH3
+        
+    k_f_4 = k_surf(T, 1e13, Ef4)/Beta
+    k_b_4 = k_surf(T, 1e13,  Eb4) /Beta  # dissociation of NH
     
-    k_f_2 = k_surf(T, 1e13, 110e3)/Beta
-    k_b_2 = k_surf(T, 1e13,  115e3)/Beta  # dissociation of NH3
+    k_f_5 = k_surf(T, 1e13, Ef5)/Beta
+    k_b_5 = k_surf(T, 1e13,  Eb5)/Beta   # N-N coupling
     
-    k_f_3 = k_surf(T, 1e13, 35e3)/Beta
-    k_b_3 = k_surf(T, 1e13, 67e3) /Beta  # dissociation of NH2
-    
-    k_f_4 = k_surf(T, 1e13, 118e3)/Beta
-    k_b_4 = k_surf(T, 1e13,  92e3) /Beta  # dissociation of NH
-    
-        #formation of N2
-    k_f_5 = k_surf(T, 1e13, 165e3)/Beta
-    k_b_5 = k_surf(T, 1e13,  104e3)/Beta   # N-N coupling
-    
-    k_f_6 = k_surf(T, 1e13, 23e3)/Beta
-    k_b_6 = k_surf(T, 1e13, 74e3)/Beta   #N2* formation
-    
-    k_des_7 = k_des(T, 1e-20, m_N2, 2, 2.88, 41.6e3)/Beta
-    k_ads_7 = k_ads(T, P_N2, 1e-20, m_N2)/Beta    #N2 deorption and adsorption
-    
-        #formation of H2
-    k_des_8 = k_des(T, 1e-20, m_H, 2, 87.6, 20e3)/Beta
-    k_ads_8 = k_ads(T, P_H2, 1e-20, m_H2)/Beta
-    
+
     # collect similar terms in new variables    
-    rf1 = k_ads_1 * Th #good
     rb1 = k_des_1 * Th_NH3 ; r1 = -rb1
     
     rf2 = k_f_2 * Th_NH3 * Th #good
     rb2 = k_b_2 * Th_NH2 * Th_H ; r2 = rf2-rb2
     
-    rf3 = k_f_3 * Th_NH2 * Th
-    rb3 = k_b_3 * Th_NH * Th_H ; r3 = rf3-rb3
     
     rf4 = k_f_4 * Th_NH * Th
     rb4 = k_b_4 * Th_N * Th_H ; r4 = rf4-rb4
     
     rf5 = k_f_5 * Th_N**2   
     rb5 = k_b_5 * Th_NN  ; r5 = rf5-rb5
-    
-    rf6 = k_f_6 * Th_NN
-    rb6 = k_b_6 * Th_N2*Th ; r6 = rf6-rb6
-    
-    rf7 = k_des_7 * Th_N2
-    rb7 = k_ads_7 * Th  ; r7 = rf7-rb7
-    
-    rf8 = k_des_8 * Th_H**2 #good
-    rb8 = k_ads_8 * Th**2  ; r8 = rf8-rb8
-    
+       
     dydt[0] = -r1  #P_NH3
     
     r8 = 0.5*(2*r2+r4)
     r7 = r5
     r6 = r5
     r3 = r2
+    
     dydt[1] = r1 - r2          # dθ(NH3)/dt
     dydt[2] = r2 - r3 # = 0    # dθ(NH2)/dt
     dydt[3] = r3 - r4          # dθ(NH)/dt
@@ -274,8 +250,8 @@ def JACOB(t,x):
 
     #Solving the ODE
 
-%time r0 = solve_ivp(dydt, (0,t_end), y0, method="BDF", t_eval=np.linspace(0,t_end,1000))
-%time r = solve_ivp(dydt, (0,t_end), y0, method="BDF", t_eval=np.linspace(0,t_end,1000), jac=JACOB, rtol = 1e-7, atol=1e-10)
+# %time r0 = solve_ivp(dydt, (0,t_end), y0, method="BDF", t_eval=np.linspace(0,t_end,1000))
+r = solve_ivp(dydt, (0,t_end), y0, method="BDF", t_eval=np.linspace(0,t_end,2000), rtol = 1e-7, atol=1e-10, args =arguments)
 P_NH3, Th_NH3, Th_NH2, Th_NH, Th_N, Th_NN, Th_N2, Th_H, Th, P_N2, P_H2, T = r.y 
 #  0     1       2     3      4      5      6       7   8    9     10   11
 t = r.t
@@ -306,27 +282,19 @@ t = r.t
 # =============================================================================
 #  4/ Caculate Rate
 # =============================================================================
-k_ads_1 = k_ads(T, P_NH3, 1e-20, m_NH3)/Beta           # adsorption of NH3
-k_des_1 = k_des(T, 1e-20, m_NH3, 1, 8.92, 140e3)/Beta
+k_des_1 = k_des(T, 1e-20, m_NH3, 1, 8.92, arguments[0])/Beta
 
-k_f_2 = k_surf(T, 1e13, 110e3)/Beta # dissociation of NH3
-k_b_2 = k_surf(T, 1e13,  115e3)/Beta
+k_f_2 = k_surf(T, 1e13, arguments[1])/Beta # dissociation of NH3
+k_b_2 = k_surf(T, 1e13,  arguments[2])/Beta
 
-# k_f_3 = k_surf(T, 1e13, 35e3)/Beta
-# k_b_3 = k_surf(T, 1e13, 67e3)/Beta    # dissociation of NH2
-
-k_f_4 = k_surf(T, 1e13, 118e3)/Beta
-k_b_4 = k_surf(T, 1e13,  92e3)/Beta   # dissociation of NH
+k_f_4 = k_surf(T, 1e13, arguments[3])/Beta
+k_b_4 = k_surf(T, 1e13,  arguments[4])/Beta   # dissociation of NH
 
     # formation of N2 Th_N
-k_f_5 = k_surf(T, 1e13, 165e3)/Beta
-k_b_5 = k_surf(T, 1e13,  104e3)/Beta   # N-N coupling
-
-k_f_6 = k_surf(T, 1e13, 23e3)/Beta
-k_b_6 = k_surf(T, 1e13, 74e3)/Beta    # N2* formation
+k_f_5 = k_surf(T, 1e13, arguments[5])/Beta
+k_b_5 = k_surf(T, 1e13,  arguments[6])/Beta   # N-N coupling
 
         # rate calc
-rf1 = k_ads_1 * Th
 rb1 = k_des_1 * Th_NH3 ; r1 = rb1 #-rf1 #NH3 Ads and Des
 
 rf2 = k_f_2 * Th_NH3 * Th 
@@ -339,11 +307,8 @@ rb4 = k_b_4 * Th_N * Th_H ; r4 = rf4-rb4 # NH* rate
 rf5 = k_f_5 * Th_N**2   
 rb5 = k_b_5 * Th_NN  ; r5 = rf5-rb5 # N* rate
 
-rf6 = k_f_6 * Th_NN 
-rb6 = k_b_6 * Th_N2 *Th ; r6 = rf6-rb6 # N-N* rate
-
-r7 = r5 #+rb7  #rf7-rb7 # N2 Ads and Des
-r8 = 0.5*(2*r2+r4)   # + rb8#rf8-rb8 # H2 Ads and Des
+r7 = r5
+r8 = 0.5*(2*r2+r4)  
 
 # =============================================================================
 # 5/ Plot TPD

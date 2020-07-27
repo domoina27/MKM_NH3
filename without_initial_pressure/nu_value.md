@@ -3,6 +3,12 @@
 
 Frequencies in cm<up>-1</up>
 
+#### Frequencies of  NH<sub>3ads</sub>
+
+```
+nu_NH3= [3391.048001,3390.036727,3374.593834,1564.59978, 1563.317602, 909.792435]
+```
+
 #### NH<sub>3ads</sub> &rarr; NH<sub>2ads</sub> + H<sub>ads</sub>
 ##### Transition state
 

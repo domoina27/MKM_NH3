@@ -17,10 +17,18 @@ def q_rot(sigma,A,B,C,T):
     h = 6.62607004e-34  # planck constant    
     return 1/sigma*(kb*T/h)**(3/2)*np.sqrt(np.pi/(A*B*C))
 
-def logq_vib(nu, T):
-    log_q= np.log10(1)
+def q_vib(nu, T):
+    q= 1
     kb = 1.38064852e-23 # boltzmann constant
     h = 6.62607004e-34  # planck constant
     for i in range(len(nu)):
-        log_q = log_q + np.log10(1/(1-np.exp(-h*nu[i]/(kb*T))))
-    return log_q
+        q = q*(1/(1-(-h*nu[i]/(kb*T))))
+    return q
+
+# def logq_vib(nu, T):
+#     log_q= np.log10(1)
+#     kb = 1.38064852e-23 # boltzmann constant
+#     h = 6.62607004e-34  # planck constant
+#     for i in range(len(nu)):
+#         log_q = log_q + np.log10(1/(1-np.exp(-h*nu[i]/(kb*T))))
+#     return log_q, print(log_q)

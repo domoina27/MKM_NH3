@@ -1,0 +1,78 @@
+'''
+CH4 + 2* <=> CH3* + H*
+coverage in function of time
+'''
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.integrate import odeint
+
+ma = 16*1.66054e-27 #molecular weight
+y0 = [0] #initial condition
+T = 900 #K Temperature
+P = 1e5 #Pa pressure
+# P = 1
+t_end = 10  #how long the reaction will last
+N0 = 1/(1e-20)
+A = 1/N0
+# =============================================================================
+# Rate constant
+# =============================================================================
+def kads(T, Eads):
+    """
+    Reaction rate constant for adsorption
+   
+    T           - Temperature in K
+    P           - Pressure in Pa
+    A           - Surface area in m^2
+    m           - Mass of reactant in kg
+    """
+    kb = 1.38064852E-23 # boltzmann constant
+    R = 8.3144598       # gas constant
+    return 1 / np.sqrt(2 * np.pi * ma * kb * T) *np.exp(-Eads / (R*T))
+    # return 1e4 *np.exp(-Eads / (R*T))
+
+def kdes(T, Edes):
+    """
+    Reaction rate constant for desorption
+   
+    T           - Temperature in K
+    A           - Surface area in m^2
+    m           - Mass of reactant in kg
+    sigma       - Symmetry number
+    theta_rot   - Rotational temperature in K
+    Edes        - Desorption energy in J/mol
+    """
+    kb = 1.38064852e-23 # boltzmann constant
+    h = 6.62607004e-34  # planck constant
+    R = 8.3144598       # gas constant
+    return 1e13 * np.exp(-(Edes) / (R*T))
+
+# =============================================================================
+# 1/ Define function
+# =============================================================================
+
+def dydt(th_CH3,t):
+    # dydt = np.zeros(1)
+    # th_CH3 = y
+    dydt =  P*kads(T, 83.942e3)*(1-th_CH3)**2 - N0*kdes(T, 229.64e3)*th_CH3**2
+    return dydt
+
+# =============================================================================
+# 2/ Solve the differntial equation
+# =============================================================================
+t = np.linspace(0,t_end)
+coverage = odeint(dydt, y0, t) #, args =arguments)　
+ 
+# =============================================================================
+# 3/ Plot result
+# =============================================================================
+
+    # Coverage
+plt.plot(t,coverage, ls='--', label= str(T)+' K') 
+
+plt.title('Coverage at P= '+str(P)+' Pa') 
+plt.ylabel('Coverage')
+plt.xlabel("Time in second")
+plt.legend()
+plt.show()

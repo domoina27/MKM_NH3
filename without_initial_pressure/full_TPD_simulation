@@ -1,0 +1,253 @@
+#!/usr/bin/env python
+"""
+THIS IS A PRACTICE FOR MICRO-KINETIC MODELING OF NH3 DISSOCIATION AND N2 AND H2 FROMATION:
+    REACTION: 
+        NH3 (g) + * = NH3*
+            NH3 dissociation is done in 3 elementarty steps
+        NH3* + * = NH2* + H*
+        NH2* + * = NH* + H*
+        NH* + * = N* + H*
+            N2 formation is done in 3 elementarty steps
+        2N* = *N-N*
+        *N-N* = N2* + *
+        N2* = N2 (g) + *
+            H2 formation is done in one step
+        2H* = H2 (g) + 2*
+           PLOT COVERAGE VS TIME
+"""
+import sys
+import time
+import multiprocessing as mp
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.integrate import solve_ivp
+
+from rate_constant_func2 import calc_kads as k_ads
+from rate_constant_func2 import calc_kdes as k_des
+from rate_constant_func2 import calc_k_arr as k_surf
+
+from rate_constant_func2 import dksur_dT
+from rate_constant_func2 import dkdes_dT
+
+# =============================================================================
+# # 0/ Constants
+# =============================================================================
+
+    # mass of relevant reactants
+m_NH3 = 17.03 * 1.66054e-27
+m_N2 = 14 * 1.66054e-27
+m_H2 = 2 * 1.66054e-27
+m_H = 1.66054e-27
+
+Beta = 4.0 #Beta  
+# pt = 0#e-20 # Total pressure
+T0 = 50 # Initial Temperature
+
+t_end = 400 # Time end
+th_NH3_0 = 1.35/9
+theta = 1-th_NH3_0
+
+# Initial value
+# P = pt * 1e5
+y0 = [th_NH3_0 , 0 , 0 , 0 , 0 , 0 , 0 , theta , 0 , 0 , T0]
+# arguments = (85.44e3, 109.99e3 ,     0   , 68.50e3, 0, 40.52e3, 0, 227.97e3, 0, 14.47e3, 0, 58.86e3,76.22e3, 0, 52.10e3)     #Ru(0001)
+arguments = (85.44e3, 109.99e3 ,113.85e3, 68.50e3, 119.93e3, 40.52e3, 40.52e3, 227.97e3, 65.61e3, 14.47e3, 84.48e3, 58.86e3, 117.24E3)     #Ru(0001)
+#energies =    E1   ,   Ef2,      Eb2,     Ef3,     Eb3,        Ef4,    Eb4,      Ef5,    Eb5,     Ef6,     Eb6,      Ef7,    E8,       
+#arguments = (140787, 74285 ,115109, 118872, 92242, 165379, 104495)     #Co2Ni
+
+# =============================================================================
+# # 1/ Define function
+# =============================================================================
+
+
+def dydt(t,y, E1,  Ef2, Eb2,  Ef3,Eb3,  Ef4,Eb4,  Ef5,Eb5,  Ef6,Eb6,  Ef7,  E8):
+    
+    dydt = np.zeros(11)
+    
+    #  0     1       2       3      4      5      6    7     8    9    10   
+    Th_NH3, Th_NH2, Th_NH, Th_N, Th_NN, Th_N2, Th_H,  Th,  P_N2,  P_H2, T = y 
+        
+    # calculate all reaction rate constants        
+        #Dissociation of NH3
+    k_des_1 = k_des(T, 1e-20, m_NH3, 1, 8.92, E1)/Beta #adsorption and desorption of NH3
+           
+    k_f_2 = k_surf(T, 1e13, Ef2)/Beta
+    k_b_2 = k_surf(T, 1e13, Eb2)/Beta  # dissociation of NH3
+    
+    k_f_3 = k_surf(T, 1e13, Ef3)/Beta
+    k_b_3 = k_surf(T, 1e13, Eb3)/Beta  # dissociation of NH3
+        
+    k_f_4 = k_surf(T, 1e13, Ef4)/Beta
+    k_b_4 = k_surf(T, 1e13,  Eb4) /Beta  # dissociation of NH
+    
+    #------------------------------------
+    k_f_5 = k_surf(T, 1e13, Ef5)/Beta
+    k_b_5 = k_surf(T, 1e13,  Eb5)/Beta   # N-N coupling
+    
+    k_f_6 = k_surf(T, 1e13, Ef6)/Beta
+    k_b_6 = k_surf(T, 1e13,  Eb6)/Beta   # N-N coupling
+    
+    k_f_7 = k_surf(T, 1e13, Ef7)/Beta    # N2 desorption
+    
+    #------------------------------------    
+    k_f_8 = k_surf(T, 1e13, E8)/Beta    # H2 desorption
+
+    # collect similar terms in new variables    
+    rb1 = k_des_1 * Th_NH3 ; r1 = 0#-rb1
+    
+    rf2 = k_f_2 * Th_NH3 * Th #good
+    rb2 = k_b_2 * Th_NH2 * Th_H ; r2 = rf2-rb2; K2=rf2/rb2
+    
+    rf3 = k_f_3 * Th_NH2 * Th #good
+    rb3 = k_b_3 * Th_NH * Th_H ; r3 = rf3-rb3; K3=rf3/rb3
+    
+    rf4 = k_f_4 * Th_NH * Th
+    rb4 = k_b_4 * Th_N * Th_H ; r4 = rf4-rb4; K4=rf4/rb4
+    
+    rf5 = k_f_5 * Th_N**2   
+    rb5 = k_b_5 * Th_NN  ; r5 = rf5-rb5; 
+    
+    rf6 = k_f_6 * Th_NN   
+    rb6 = k_b_6 * Th_N2 * Th  ; r6 = rf6-rb6;  K6=rf6/rb6
+    
+    r7 = k_f_7 * Th_N2
+    
+    r8 = k_f_8 * Th_H**2   
+    
+    
+    # r8 = 0.5*(2*r2+r4)
+    # r9 = r8#0.5*(2*r2+r4)
+    # r7 = r5
+    # r6 = r5
+    # r3 = r2
+    
+    dydt[0] = -r2               # dθ(NH3)/dt
+    dydt[1] = r2 - r3 # = 0    # dθ(NH2)/dt
+    dydt[2] = r3 - r4          # dθ(NH)/dt
+    dydt[3] = r4 - 2*r5        # dθ(N)/dt
+    dydt[4] = r5 - r6 # = 0    # dθ(N-N)/dt
+    dydt[5] = r6 - r7 # = 0    # dθ(N2)/dt
+    dydt[6] = r2 + r3 + r4 - 2*r8   # dθ(H)/dt
+    dydt[7] = -r2 -r3 -r4 + r6 + r7 +r8  # dθ(*)/dt   - dydt[6] - dydt[3] 
+    
+    dydt[8] = r7  # P_N2
+    dydt[9] = r8  # P_H2
+    
+    dydt[10] = Beta   # Temperature changes with time
+    
+    return dydt
+
+# =============================================================================
+# 2/ Solve the differntial equation
+# =============================================================================
+
+# %time r0 = solve_ivp(dydt, (0,t_end), y0, method="BDF", t_eval=np.linspace(0,t_end,1000))
+r = solve_ivp(dydt, (0,t_end), y0, method="BDF", t_eval=np.linspace(0,t_end,2000), rtol = 1e-10, atol=1e-10, args =arguments)
+Th_NH3, Th_NH2, Th_NH, Th_N, Th_NN, Th_N2, Th_H,  Th,  P_N2,  P_H2, T = r.y 
+#  0     1       2       3      4      5      6     7     8    9    10    11   12
+t = r.t
+
+
+# =============================================================================
+# 3/ Plot result
+# =============================================================================
+
+    # Coverage
+# plt.plot(T,Th_NH3, label= "Theta NH3")
+# plt.plot(T,Th_NH2, label= "Theta NH2")
+# plt.plot(T,Th_NH, label= "Theta NH")
+# plt.plot(T,Th_N, label= "Theta N")
+# plt.plot(T,Th_NN, label= "Theta N-N")
+# plt.plot(T,Th_N2, label= "Theta N2")
+# plt.plot(T,Th_H, label= "Theta H")
+# plt.plot(T,Th, label= "Theta", ls = "--")
+# plt.show()
+# plt.legend()
+
+#     # pressure
+# plt.plot(T,P_NH3, label= "P NH3")
+# plt.plot(T,P_N2, label= "P N2")
+# plt.plot(T,P_H2, label= "P H2")
+# plt.show()
+
+# =============================================================================
+#  4/ Caculate Rate
+# =============================================================================
+# k_des_1 = k_des(T, 1e-20, m_NH3, 1, 8.92, arguments[0])/Beta #adsorption and desorption of NH3
+           
+k_f_2 = k_surf(T, 1e13, arguments[1])/Beta
+k_b_2 = k_surf(T, 1e13, arguments[2] )/Beta  # dissociation of NH3
+
+k_f_3 = k_surf(T, 1e13, arguments[3])/Beta
+k_b_3 = k_surf(T, 1e13, arguments[4])/Beta  # dissociation of NH3
+    
+k_f_4 = k_surf(T, 1e13, arguments[5])/Beta
+k_b_4 = k_surf(T, 1e13,  arguments[6]) /Beta  # dissociation of NH
+
+#------------------------------------
+k_f_5 = k_surf(T, 1e13, arguments[7])/Beta
+k_b_5 = k_surf(T, 1e13,  arguments[8])/Beta   # N-N coupling
+
+k_f_6 = k_surf(T, 1e13, arguments[9])/Beta
+k_b_6 = k_surf(T, 1e13,  arguments[10])/Beta   # N-N coupling
+
+k_f_7 = k_surf(T, 1e13, arguments[11])/Beta    # N2 desorption
+
+#------------------------------------    
+k_f_8 = k_surf(T, 1e13, arguments[12])/Beta  # H-H coupling
+
+# collect similar terms in new variables    
+# rb1 = k_des_1 * Th_NH3 ; r1 = -rb1
+    
+# rf2 = k_f_2 * Th_NH3 * Th #good
+# rb2 = k_b_2 * Th_NH2 * Th_H ; r2 = rf2-rb2
+
+# rf3 = k_f_3 * Th_NH2 * Th #good
+# rb3 = k_b_3 * Th_NH * Th_H ; r3 = rf3-rb3
+
+# rf4 = k_f_4 * Th_NH * Th
+# rb4 = k_b_4 * Th_N * Th_H ; r4 = rf4-rb4
+
+# rf5 = k_f_5 * Th_N**2   
+# rb5 = k_b_5 * Th_NN  ; r5 = rf5-rb5
+
+# rf6 = k_f_6 * Th_NN   
+# rb6 = k_b_6 * Th_N2 * Th  ; r6 = rf6-rb6
+
+r7 = k_f_7 * Th_N2
+
+# r7 = r5
+# r8 = 0.5*(2*r2+r4) 
+
+r8 = k_f_8 * Th_H**2   
+
+# =============================================================================
+# 5/ Plot TPD
+
+# =============================================================================
+B =str(Beta)
+def k_surf0(T, nu, Eact):
+    R = 8.3144598 # gas constant
+    return nu* np.exp(-Eact / (R * T))
+k_ter = k_surf0(T, 1e12, 218e3 )/Beta  
+r_ter = k_ter*Th_N**2
+
+#plt.plot(T,r1, label= "NH3", color ="b")
+plt.plot(T,r7, label= "N2", color ="g")
+plt.plot(T,r8, label= "H2", color ="r", ls ="--")
+
+# plt.plot(T,r_ter, color = "b", ls = '-',linewidth=2, label= r"Exp(Terrace)")
+
+# plt.title("TPD at "+ str(round(th_NH3_0,2))+" coverage", fontsize=15)
+# plt.xlabel("Temperature (K)")
+# plt.ylabel("Rate")
+
+plt.rc('xtick', labelsize=18)
+plt.title(r"TPD of $N_2$ at $\beta$= " + B +r" K/s and "+str(round(th_NH3_0,2)) +r" coverage", fontsize=18)
+plt.xlabel("Temperature (K)", fontsize=16)
+plt.ylabel("Rate", fontsize=16)
+plt.xlim(250,1100)
+
+plt.legend()
+plt.show()
